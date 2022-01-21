@@ -1,6 +1,6 @@
 module Archibald
     using Distributions, StatsBase, LinearAlgebra
-    using DataFrames
+    using DataFrames, DataFramesMeta
 
 
     export MarkovChain
