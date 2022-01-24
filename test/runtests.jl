@@ -6,7 +6,7 @@ using LinearAlgebra
 
 
 
-# @testset "Over Sampling MCMC" begin
+@testset "Over Sampling MCMC" begin
     
     function generate_data(;n = 10, 
                             T = 100,
@@ -78,19 +78,20 @@ using LinearAlgebra
     
     mvn_draws = MetropolisHastings(
         1_000, 
-        mvn_markov_state, 
+        chain_over, 
         x -> MvNormal(x, 0.1), # jeez what an elegant design right? right?
+        x -> MvNormal(sim_n, x[2]),
         logs = true, 
         burn = 1_000)
     # now "for real" with lower proposal variance
     mvn_df = tidybayes(mvn_draws...)
+    mvn_df
     @test isa(mvn_df, DataFrame)
-    @test size(mvn_df, 1) == 106000
     @test isa(mvn_draws[1][1], Vector)
     @test isa(mvn_draws[1][1][1], Float64)
     @test !isnan(mvn_draws[1][1][2])
 
-# end
+end
 
 
 @testset "Basic Metropolis Hastings" begin

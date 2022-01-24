@@ -3,7 +3,7 @@ module Archibald
     using DataFrames, DataFramesMeta
 
 
-    export MarkovChain
+    export MarkovChain, MarkovChainOverSample
     export MetropolisHastings!, MetropolisHastings
     export tidybayes
 
