@@ -4,6 +4,95 @@ using Distributions
 using DataFrames
 using LinearAlgebra
 
+
+
+# @testset "Over Sampling MCMC" begin
+    
+    function generate_data(;n = 10, 
+                            T = 100,
+                            β = 0.25,
+                            family = Bernoulli,
+                            τ = 1,
+                            link = x -> cdf(Normal(), x))
+        i_index = repeat(1:n, inner = T)
+        t_index = repeat(1:T, n)
+        μ_x = rand(Normal(0, 1), n)
+        α_i = rand(Normal(0, τ), n)
+        x = vcat(rand.(Normal.(μ_x, 1), T )...)
+        μ_vec = α_i[i_index] .+ x * β  
+    
+        y = rand.(family.(link.(μ_vec)))
+
+        return y, x, i_index, t_index, α_i 
+    end
+
+
+    function linear_target_dist_oversample(y, 
+                                           x, 
+                                           i_index, 
+                                           single_parameters,
+                                           over_parameters)
+        β = single_parameters[1]
+        τ = exp(single_parameters[2])
+        α_matrix = over_parameters
+        S = size(α_matrix, 2)
+        ll = Vector{Float64}(undef, S)
+        i_index = Int.(i_index)
+        for s in 1:S
+            resid_vec = y .- α_matrix[i_index, s] .- x*β
+            ll[s] = sum(log.(pdf.(Normal.(0, 1), resid_vec)))
+        end
+        τ_prior = TruncatedNormal(0, 3, 0, Inf)
+        τ_prior_dens = pdf(τ_prior, τ)
+        param_probability = sum(ll) + log(τ_prior_dens)
+        return param_probability
+    end
+    
+    
+    
+    
+    
+    
+    sim_n = 5
+    sim_t = 100
+    sim_τ = 0.5
+    linear_data = generate_data(n = sim_n, T = sim_t, τ=sim_τ, link = x -> Normal(x, 1), family = identity)
+
+    oversample_parameters = randn(sim_n, 3)
+    chain_over = Archibald.MarkovChainOverSample(
+        [0.1, 0.2],
+        3,
+        oversample_parameters,
+        [linear_data[1], linear_data[2], linear_data[3]],
+        (x_single, x_over, data) -> linear_target_dist_oversample(data[1],
+                                                   data[2],
+                                                   data[3],
+                                                   x_single, x_over)
+    )
+    MetropolisHastings!(
+        chain_over,
+        (x) -> MvNormal(x, 0.1),
+        (x) -> MvNormal(sim_n, x[2]),
+        logs = true
+        )
+    
+    mvn_draws = MetropolisHastings(
+        1_000, 
+        mvn_markov_state, 
+        x -> MvNormal(x, 0.1), # jeez what an elegant design right? right?
+        logs = true, 
+        burn = 1_000)
+    # now "for real" with lower proposal variance
+    mvn_df = tidybayes(mvn_draws...)
+    @test isa(mvn_df, DataFrame)
+    @test size(mvn_df, 1) == 106000
+    @test isa(mvn_draws[1][1], Vector)
+    @test isa(mvn_draws[1][1][1], Float64)
+    @test !isnan(mvn_draws[1][1][2])
+
+# end
+
+
 @testset "Basic Metropolis Hastings" begin
     function generate_data(; N = 100)
         sigma_b = log(rand(InverseGamma(2, 2)))

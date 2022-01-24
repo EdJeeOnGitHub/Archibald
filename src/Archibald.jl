@@ -8,7 +8,6 @@ module Archibald
     export tidybayes
 
     abstract type Markovian end
-# Write your package code here.
     """
     We create a MarkovChain object with a vector of parameters, a data vector, and 
     parametric type target_pdf which will be some sort of function. Using parametric 
@@ -21,13 +20,12 @@ module Archibald
         target_pdf::F
     end
 
-    struct MarkovChainOverSample{F<:Function, H<:Function} <: Markovian
-        parameters::Matrix
+    struct MarkovChainOverSample{F<:Function} <: Markovian
+        single_sample_parameters::Vector
         S::Int64
-        oversample_params_idx::Vector
+        oversample_parameters::Matrix
         data::Vector
         target_pdf::F
-        tau_prior::H
     end
     include("samplers.jl")
     include("utils.jl")
